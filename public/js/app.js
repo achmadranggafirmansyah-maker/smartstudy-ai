@@ -169,11 +169,7 @@ async function bootstrap() {
 }
 window.addEventListener('DOMContentLoaded', bootstrap);
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW gagal terdaftar', err));
-  });
-}
+
 
 function renderDashboard(root) {
   const stats = getStats();
