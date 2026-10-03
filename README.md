@@ -16,6 +16,13 @@ Saat pertama kali buka, isi:
 - Base URL: `https://generativelanguage.googleapis.com/v1beta/openai/`
 - Model: `gemini-2.5-flash`
 
+## Deploy ke Vercel
+
+1. Import repo ini ke Vercel
+2. Framework Preset: Other
+3. Build Command: `npm install`
+4. Deploy
+
 ## Fitur
 
 - Tutor AI (teks + foto soal)
