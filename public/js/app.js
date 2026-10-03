@@ -1,5 +1,5 @@
 import { el, $$, toast, escapeHtml } from './ui.js';
-import { getHealth, saveConfig } from './api.js';
+import { getHealth, setStoredKey, getStoredKey } from './api.js';
 import { getStats } from './storage.js';
 import { renderTutor } from './tutor.js';
 import { renderQuiz } from './quiz.js';
@@ -92,40 +92,47 @@ function renderOnboarding(root) {
 
   const form = el('form', {
     onsubmit: async (e) => {
-      e.preventDefault();
-      const apiKey = apiKeyInput.value.trim();
-      if (apiKey.length < 10) { toast('API key terlalu pendek.', 'err'); return; }
+  e.preventDefault();
+  const apiKey = apiKeyInput.value.trim();
+  if (apiKey.length < 10) { toast('API key terlalu pendek.', 'err'); return; }
 
-      submit.disabled = true;
-      submit.innerHTML = '<span class="loader"></span> Memverifikasi…';
-      errorBox.innerHTML = '';
+  submit.disabled = true;
+  submit.innerHTML = '<span class="loader"></span> Memverifikasi…';
+  errorBox.innerHTML = '';
 
-      try {
-        await saveConfig({
-          apiKey,
-          baseUrl: baseUrlInput.value.trim() || undefined,
-          model: modelInput.value.trim() || undefined
-        });
+  try {
+    const cfg = {
+      apiKey,
+      baseUrl: baseUrlInput.value.trim() || 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      model: modelInput.value.trim() || 'gemini-2.5-flash',
+      visionModel: modelInput.value.trim() || 'gemini-2.5-flash'
+    };
+    setStoredKey(cfg);
 
-        const h = await getHealth();
-        if (h.ai === 'live') {
-          appState.aiReady = true;
-          updateModeBadge('live');
-          toast('Aktivasi berhasil. Selamat belajar!', 'ok');
-          location.hash = '#/dashboard';
-          navigate();
-        } else {
-          throw new Error('Server menerima key tapi belum melaporkan status live.');
-        }
-      } catch (err) {
-        const msg = err.message || 'Gagal mengaktifkan.';
-        errorBox.appendChild(el('div', { class: 'warn-box', style: 'margin-top:12px' }, '❌ ' + escapeHtml(msg)));
-        toast('Aktivasi gagal.', 'err');
-      } finally {
-        submit.disabled = false;
-        submit.textContent = '🔓 Aktifkan Sekarang';
-      }
+    // Verifikasi: kirim satu request uji ke server
+    const testRes = await fetch('/api/health', {
+      headers: { 'X-API-Key': cfg.apiKey }
+    });
+    const testData = await testRes.json();
+
+    if (testData.ai === 'live' || testData.ok) {
+      appState.aiReady = true;
+      updateModeBadge('live');
+      toast('Aktivasi berhasil. Selamat belajar!', 'ok');
+      location.hash = '#/dashboard';
+      navigate();
+    } else {
+      throw new Error('Server belum siap menerima key. Coba lagi.');
     }
+  } catch (err) {
+    const msg = err.message || 'Gagal mengaktifkan.';
+    errorBox.appendChild(el('div', { class: 'warn-box', style: 'margin-top:12px' }, '❌ ' + escapeHtml(msg)));
+    toast('Aktivasi gagal.', 'err');
+  } finally {
+    submit.disabled = false;
+    submit.textContent = '🔓 Aktifkan Sekarang';
+  }
+}
   },
     el('label', { for: 'onboardKey' }, 'API Key'),
     apiKeyInput,
@@ -149,15 +156,17 @@ function renderOnboarding(root) {
 }
 
 async function bootstrap() {
-  const h = await getHealth();
-  appState.checking = false;
-  updateModeBadge(h.ai);
-  appState.aiReady = h.ai === 'live';
-
-  if (!appState.aiReady) renderOnboarding(main);
-  else navigate();
+  const stored = getStoredKey();
+  if (stored?.apiKey) {
+    appState.aiReady = true;
+    updateModeBadge('live');
+    navigate();
+  } else {
+    appState.aiReady = false;
+    updateModeBadge('locked');
+    renderOnboarding(main);
+  }
 }
-
 window.addEventListener('DOMContentLoaded', bootstrap);
 
 if ('serviceWorker' in navigator) {
