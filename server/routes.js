@@ -2,13 +2,13 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { askTutor, gradeEssay } from './services/ai.js';
-import { getConfig, setConfig, clearConfig, isAIConfigured } from './config.js';
+import { isAIConfigured, getConfigFromReq } from './config.js';
 
 export const router = express.Router();
 
 export const aiLimiter = rateLimit({
   windowMs: Number(process.env.AI_RATE_WINDOW_MIN || 15) * 60 * 1000,
-  max: Number(process.env.AI_RATE_MAX_REQ || 30),
+  max: Number(process.env.AI_RATE_MAX_REQ || 60),
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, error: 'Terlalu banyak permintaan. Coba lagi beberapa menit.' }
@@ -36,8 +36,8 @@ function sanitizeText(input, max = 4000) {
   return input.replace(/\u0000/g, '').trim().slice(0, max);
 }
 
-function requireAI(_req, res, next) {
-  if (!isAIConfigured()) {
+function requireAI(req, res, next) {
+  if (!isAIConfigured(req)) {
     return res.status(412).json({
       ok: false,
       error: 'API key belum dikonfigurasi. Masukkan API key terlebih dahulu.'
@@ -46,47 +46,19 @@ function requireAI(_req, res, next) {
   next();
 }
 
-router.get('/health', (_req, res) => {
-  res.json({ ok: true, ai: isAIConfigured() ? 'live' : 'locked', ts: Date.now() });
+router.get('/health', (req, res) => {
+  res.json({ ok: true, ai: isAIConfigured(req) ? 'live' : 'locked', ts: Date.now() });
 });
 
-router.get('/config', (_req, res) => {
-  const cfg = getConfig();
+router.get('/config', (req, res) => {
+  const cfg = getConfigFromReq(req);
   res.json({
     ok: true,
-    configured: isAIConfigured(),
+    configured: isAIConfigured(req),
     baseUrl: cfg.baseUrl,
     model: cfg.model,
     visionModel: cfg.visionModel
   });
-});
-
-router.post('/config', (req, res) => {
-  const apiKey = sanitizeText(req.body?.apiKey, 400);
-  const baseUrl = sanitizeText(req.body?.baseUrl, 300);
-  const model = sanitizeText(req.body?.model, 100);
-  const visionModel = sanitizeText(req.body?.visionModel, 100);
-
-  if (!apiKey || apiKey.length < 10) {
-    return res.status(400).json({ ok: false, error: 'API key tidak valid (terlalu pendek).' });
-  }
-  if (baseUrl && !/^https?:\/\//i.test(baseUrl)) {
-    return res.status(400).json({ ok: false, error: 'Base URL harus dimulai dengan http(s)://.' });
-  }
-
-  setConfig({
-    apiKey,
-    ...(baseUrl && { baseUrl }),
-    ...(model && { model }),
-    ...(visionModel && { visionModel })
-  });
-
-  res.json({ ok: true, ai: 'live' });
-});
-
-router.delete('/config', (_req, res) => {
-  clearConfig();
-  res.json({ ok: true, ai: isAIConfigured() ? 'live' : 'locked' });
 });
 
 router.post('/tutor', requireAI, upload.single('image'), async (req, res, next) => {
@@ -100,7 +72,7 @@ router.post('/tutor', requireAI, upload.single('image'), async (req, res, next) 
       return res.status(400).json({ ok: false, error: 'Kirim pertanyaan teks atau unggah gambar soal.' });
     }
 
-    const result = await askTutor({ question, imageDataUrl });
+    const result = await askTutor(req, { question, imageDataUrl });
     res.json({ ok: true, data: result });
   } catch (err) { next(err); }
 });
@@ -117,7 +89,7 @@ router.post('/essay', requireAI, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Soal dan jawaban wajib diisi.' });
     }
 
-    const result = await gradeEssay({ prompt, answer, rubric });
+    const result = await gradeEssay(req, { prompt, answer, rubric });
     res.json({ ok: true, data: result });
   } catch (err) { next(err); }
 });
