@@ -1,1 +1,1 @@
-# smartstidy-ai
+# smartstudy-ai
