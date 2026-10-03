@@ -48,22 +48,34 @@ async function request(path, options = {}) {
   } finally { clearTimeout(to); }
 }
 
+// Simpan config ke localStorage (client-side, stateless).
+// Tidak ada request ke server.
+export async function saveConfig({ apiKey, baseUrl, model, visionModel }) {
+  if (!apiKey || apiKey.length < 10) {
+    throw new Error('API key terlalu pendek.');
+  }
+  setStoredKey({
+    apiKey,
+    baseUrl: baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    model: model || 'gemini-2.5-flash',
+    visionModel: visionModel || model || 'gemini-2.5-flash'
+  });
+  return { ok: true, ai: 'live' };
+}
+
+// Hapus config dari localStorage
+export async function clearConfig() {
+  clearStoredKey();
+  return { ok: true, ai: 'locked' };
+}
+
+// Health: cek dari localStorage
 export async function getHealth() {
   const stored = getStoredKey();
-  // Di Vercel stateless, health hanya cek apakah key ada di browser.
   if (!stored?.apiKey || stored.apiKey.length < 10) {
     return { ok: true, ai: 'locked' };
   }
-  // Verifikasi ke server sekali
-  try {
-    const res = await fetch('/api/health', {
-      headers: { 'X-API-Key': stored.apiKey }
-    });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { ok: true, ai: 'live' };
-  }
+  return { ok: true, ai: 'live' };
 }
 
 export async function askTutor({ question, imageFile }) {
