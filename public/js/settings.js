@@ -1,6 +1,6 @@
 import { el, toast, confirmDialog } from './ui.js';
 import { KEYS, DEFAULT_SETTINGS, read, write, clearAll, clearHistory, getStats } from './storage.js';
-import { clearConfig } from './api.js';
+import { clearStoredKey } from './api.js';
 
 export function renderSettings(root) {
   root.innerHTML = '';
@@ -44,12 +44,11 @@ export function renderSettings(root) {
       el('button', {
         class: 'btn ghost',
         onclick: () => {
-          if (!confirmDialog('Ganti API key? Aplikasi akan dikunci sampai Anda memasukkan key baru.')) return;
-          clearConfig().then(() => {
-            toast('API key dihapus. Halaman akan dimuat ulang.', 'ok');
-            setTimeout(() => location.reload(), 600);
-          }).catch(() => toast('Gagal menghapus key.', 'err'));
-        }
+  if (!confirmDialog('Ganti API key? Aplikasi akan dikunci sampai Anda memasukkan key baru.')) return;
+  clearStoredKey();
+  toast('API key dihapus. Halaman akan dimuat ulang.', 'ok');
+  setTimeout(() => location.reload(), 600);
+}
       }, '🔓 Ganti API Key')
     )
   );
