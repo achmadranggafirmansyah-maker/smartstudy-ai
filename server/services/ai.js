@@ -81,7 +81,7 @@ export async function askTutor(req, { question, imageDataUrl }) {
   });
   if (imageDataUrl) userContent.push({ type: 'image_url', image_url: { url: imageDataUrl } });
 
-  const data = await callChat(req,{
+  const data = await callChat(req, {
     model: imageDataUrl ? cfg.visionModel : cfg.model,
     messages: [
       { role: 'system', content: TUTOR_SYSTEM },
@@ -132,7 +132,7 @@ export async function gradeEssay(req, { prompt, answer, rubric }) {
   ]);
   const userMsg = `Soal:\n${prompt}\n\nRubrik:\n- ${rubricList.join('\n- ')}\n\nJawaban siswa:\n${answer}`;
 
-  const data = await callChat(req,{
+  const data = await callChat(req, {
     messages: [
       { role: 'system', content: ESSAY_SYSTEM },
       { role: 'user', content: userMsg }
