@@ -18,7 +18,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'blob:'],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", 'data:'],
@@ -39,7 +39,9 @@ app.use('/api', aiLimiter);
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   maxAge: '1h',
   setHeaders(res, filePath) {
-    if (filePath.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache');
+    if (filePath.endsWith('sw.js') || filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
   }
 }));
 
@@ -56,10 +58,7 @@ app.use((err, req, res, _next) => {
   res.status(status).json({ ok: false, error: err.publicMessage || 'Terjadi kesalahan pada server.' });
 });
 
-// Vercel: ekspor app, jangan listen
-if (process.env.VERCEL) {
-  // Vercel handles the server; nothing to do here
-} else {
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`\nSmartStudy AI berjalan di http://localhost:${PORT}`);
     console.log(`Status AI: ${process.env.OPENAI_API_KEY ? 'AKTIF (dari env var)' : 'TERKUNCI (masukkan API key lewat aplikasi)'}\n`);
