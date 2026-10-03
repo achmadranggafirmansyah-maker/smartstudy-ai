@@ -1,7 +1,7 @@
-import { getConfig } from '../config.js';
+import { getConfigFromReq } from '../config.js';
 
-async function callChat({ model, messages, jsonMode = true, maxTokens = 900 }) {
-  const cfg = getConfig();
+async function callChat(req, { model, messages, jsonMode = true, maxTokens = 900 }) {
+  const cfg = getConfigFromReq(req);
   if (!cfg.apiKey) {
     const e = new Error('API key belum dikonfigurasi');
     e.status = 412;
@@ -72,8 +72,8 @@ Balas HANYA dalam JSON valid dengan skema:
   "disclaimer": "Jawaban AI dapat keliru. Periksa kembali dengan sumber resmi."
 }`;
 
-export async function askTutor({ question, imageDataUrl }) {
-  const cfg = getConfig();
+export async function askTutor(req, { question, imageDataUrl }) {
+  const cfg = getConfigFromReq(req);
   const userContent = [];
   userContent.push({
     type: 'text',
@@ -81,7 +81,7 @@ export async function askTutor({ question, imageDataUrl }) {
   });
   if (imageDataUrl) userContent.push({ type: 'image_url', image_url: { url: imageDataUrl } });
 
-  const data = await callChat({
+  const data = await callChat(req,{
     model: imageDataUrl ? cfg.visionModel : cfg.model,
     messages: [
       { role: 'system', content: TUTOR_SYSTEM },
@@ -126,13 +126,13 @@ Balas HANYA dalam JSON valid dengan skema:
   "disclaimer": "Penilaian AI bersifat indikatif."
 }`;
 
-export async function gradeEssay({ prompt, answer, rubric }) {
+export async function gradeEssay(req, { prompt, answer, rubric }) {
   const rubricList = (rubric && rubric.length ? rubric : [
     'Pemahaman konsep', 'Ketepatan istilah', 'Struktur & kejelasan', 'Kelengkapan argumen'
   ]);
   const userMsg = `Soal:\n${prompt}\n\nRubrik:\n- ${rubricList.join('\n- ')}\n\nJawaban siswa:\n${answer}`;
 
-  const data = await callChat({
+  const data = await callChat(req,{
     messages: [
       { role: 'system', content: ESSAY_SYSTEM },
       { role: 'user', content: userMsg }
