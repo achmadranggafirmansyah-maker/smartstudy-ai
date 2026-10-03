@@ -56,7 +56,12 @@ app.use((err, req, res, _next) => {
   res.status(status).json({ ok: false, error: err.publicMessage || 'Terjadi kesalahan pada server.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`\nSmartStudy AI berjalan di http://localhost:${PORT}`);
-  console.log(`Status AI: ${process.env.OPENAI_API_KEY ? 'AKTIF (dari env var)' : 'TERKUNCI (masukkan API key lewat aplikasi)'}\n`);
-});
+// Vercel: ekspor app, jangan listen
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  app.listen(PORT, () => {
+    console.log(`\nSmartStudy AI berjalan di http://localhost:${PORT}`);
+    console.log(`Status AI: ${process.env.OPENAI_API_KEY ? 'AKTIF (dari env var)' : 'TERKUNCI (masukkan API key lewat aplikasi)'}\n`);
+  });
+}
