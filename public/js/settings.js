@@ -39,23 +39,23 @@ export function renderSettings(root) {
 
   const apiCard = el('div', { class: 'card' },
     el('h2', {}, '🔑 API Key'),
-    el('p', { class: 'hint' }, 'Ganti atau hapus API key yang sedang aktif di server.'),
+    el('p', { class: 'hint' }, 'API key disimpan di browser Anda (localStorage). Tidak dikirim ke server.'),
     el('div', { class: 'btn-row' },
       el('button', {
         class: 'btn ghost',
         onclick: () => {
-  if (!confirmDialog('Ganti API key? Aplikasi akan dikunci sampai Anda memasukkan key baru.')) return;
-  clearStoredKey();
-  toast('API key dihapus. Halaman akan dimuat ulang.', 'ok');
-  setTimeout(() => location.reload(), 600);
-}
+          if (!confirmDialog('Ganti API key? Aplikasi akan dikunci sampai Anda memasukkan key baru.')) return;
+          clearStoredKey();
+          toast('API key dihapus. Halaman akan dimuat ulang.', 'ok');
+          setTimeout(() => location.reload(), 600);
+        }
       }, '🔓 Ganti API Key')
     )
   );
 
   const dataCard = el('div', { class: 'card' },
     el('h2', {}, '🗑️ Data & Privasi'),
-    el('p', { class: 'hint' }, 'Riwayat belajar tersimpan lokal. API key tersimpan di server Anda.'),
+    el('p', { class: 'hint' }, 'Riwayat belajar tersimpan lokal di browser.'),
     el('div', { class: 'btn-row' },
       el('button', {
         class: 'btn ghost',
