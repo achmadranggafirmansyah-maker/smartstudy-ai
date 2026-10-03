@@ -58,10 +58,12 @@ app.use((err, req, res, _next) => {
 
 // Vercel: ekspor app, jangan listen
 if (process.env.VERCEL) {
-  module.exports = app;
+  // Vercel handles the server; nothing to do here
 } else {
   app.listen(PORT, () => {
     console.log(`\nSmartStudy AI berjalan di http://localhost:${PORT}`);
     console.log(`Status AI: ${process.env.OPENAI_API_KEY ? 'AKTIF (dari env var)' : 'TERKUNCI (masukkan API key lewat aplikasi)'}\n`);
   });
 }
+
+export default app;
