@@ -1,5 +1,5 @@
 import { el, $$, toast, escapeHtml } from './ui.js';
-import { getHealth, setStoredKey, getStoredKey } from './api.js';
+import { getHealth, saveConfig, getStoredKey } from './api.js';
 import { getStats } from './storage.js';
 import { renderTutor } from './tutor.js';
 import { renderQuiz } from './quiz.js';
@@ -21,7 +21,7 @@ const main = document.getElementById('main');
 const menuBtn = document.getElementById('menuBtn');
 const sidenav = document.getElementById('sidenav');
 
-const appState = { aiReady: false, checking: true };
+const appState = { aiReady: false };
 
 function closeMenu() {
   sidenav.classList.remove('open');
@@ -42,6 +42,7 @@ document.addEventListener('click', (e) => {
 
 function updateModeBadge(ai) {
   const b = document.getElementById('modeBadge');
+  if (!b) return;
   if (ai === 'live') { b.textContent = 'AI aktif'; b.className = 'mode-badge live'; }
   else if (ai === 'locked') { b.textContent = 'Terkunci'; b.className = 'mode-badge demo'; }
   else { b.textContent = 'Offline'; b.className = 'mode-badge'; }
@@ -92,47 +93,35 @@ function renderOnboarding(root) {
 
   const form = el('form', {
     onsubmit: async (e) => {
-  e.preventDefault();
-  const apiKey = apiKeyInput.value.trim();
-  if (apiKey.length < 10) { toast('API key terlalu pendek.', 'err'); return; }
+      e.preventDefault();
+      const apiKey = apiKeyInput.value.trim();
+      if (apiKey.length < 10) { toast('API key terlalu pendek.', 'err'); return; }
 
-  submit.disabled = true;
-  submit.innerHTML = '<span class="loader"></span> Memverifikasi…';
-  errorBox.innerHTML = '';
+      submit.disabled = true;
+      submit.innerHTML = '<span class="loader"></span> Mengaktifkan…';
+      errorBox.innerHTML = '';
 
-  try {
-    const cfg = {
-      apiKey,
-      baseUrl: baseUrlInput.value.trim() || 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      model: modelInput.value.trim() || 'gemini-2.5-flash',
-      visionModel: modelInput.value.trim() || 'gemini-2.5-flash'
-    };
-    setStoredKey(cfg);
+      try {
+        await saveConfig({
+          apiKey,
+          baseUrl: baseUrlInput.value.trim() || undefined,
+          model: modelInput.value.trim() || undefined
+        });
 
-    // Verifikasi: kirim satu request uji ke server
-    const testRes = await fetch('/api/health', {
-      headers: { 'X-API-Key': cfg.apiKey }
-    });
-    const testData = await testRes.json();
-
-    if (testData.ai === 'live' || testData.ok) {
-      appState.aiReady = true;
-      updateModeBadge('live');
-      toast('Aktivasi berhasil. Selamat belajar!', 'ok');
-      location.hash = '#/dashboard';
-      navigate();
-    } else {
-      throw new Error('Server belum siap menerima key. Coba lagi.');
+        appState.aiReady = true;
+        updateModeBadge('live');
+        toast('Aktivasi berhasil. Selamat belajar!', 'ok');
+        location.hash = '#/dashboard';
+        navigate();
+      } catch (err) {
+        const msg = err.message || 'Gagal mengaktifkan.';
+        errorBox.appendChild(el('div', { class: 'warn-box', style: 'margin-top:12px' }, '❌ ' + escapeHtml(msg)));
+        toast('Aktivasi gagal.', 'err');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = '🔓 Aktifkan Sekarang';
+      }
     }
-  } catch (err) {
-    const msg = err.message || 'Gagal mengaktifkan.';
-    errorBox.appendChild(el('div', { class: 'warn-box', style: 'margin-top:12px' }, '❌ ' + escapeHtml(msg)));
-    toast('Aktivasi gagal.', 'err');
-  } finally {
-    submit.disabled = false;
-    submit.textContent = '🔓 Aktifkan Sekarang';
-  }
-}
   },
     el('label', { for: 'onboardKey' }, 'API Key'),
     apiKeyInput,
@@ -144,7 +133,7 @@ function renderOnboarding(root) {
   const card = el('div', { class: 'card onboarding', role: 'region', 'aria-label': 'Aktivasi aplikasi' },
     el('div', { class: 'onboard-icon' }, '🔐'),
     el('h1', { style: 'margin:8px 0 6px;font-size:22px' }, 'Aktivasi SmartStudy AI'),
-    el('p', { class: 'hint', style: 'margin-top:0' }, 'Masukkan API key untuk membuka seluruh fitur. Key hanya tersimpan di server Anda sendiri.'),
+    el('p', { class: 'hint', style: 'margin-top:0' }, 'Masukkan API key untuk membuka seluruh fitur. Key hanya tersimpan di browser Anda.'),
     el('div', { class: 'warn-box', style: 'margin:12px 0' }, '⚠️ Jangan bagikan API key Anda. Aplikasi ini hanya untuk penggunaan pribadi.'),
     el('div', { style: 'margin-bottom:12px' },
       el('a', { href: 'https://aistudio.google.com/app/apikey', target: '_blank', rel: 'noopener noreferrer', class: 'link', style: 'color:var(--purple-600);font-weight:600' }, 'Belum punya API key Gemini? Ambil gratis di Google AI Studio →')
@@ -157,7 +146,7 @@ function renderOnboarding(root) {
 
 async function bootstrap() {
   const stored = getStoredKey();
-  if (stored?.apiKey) {
+  if (stored?.apiKey && stored.apiKey.length >= 10) {
     appState.aiReady = true;
     updateModeBadge('live');
     navigate();
@@ -167,9 +156,14 @@ async function bootstrap() {
     renderOnboarding(main);
   }
 }
+
 window.addEventListener('DOMContentLoaded', bootstrap);
 
-
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW gagal terdaftar', err));
+  });
+}
 
 function renderDashboard(root) {
   const stats = getStats();
